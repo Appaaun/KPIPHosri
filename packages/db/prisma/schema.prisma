@@ -1,0 +1,251 @@
+generator client {
+ provider = "prisma-client-js"
+ engineType = "client"
+}
+datasource db {
+ provider = "postgresql"
+ url = env("DATABASE_URL")
+}
+enum Role {
+ SUPER_ADMIN
+ EXECUTIVE
+ QUALITY_ADMIN
+ DEPARTMENT_ADMIN
+ DATA_ENTRY
+ VIEWER
+}
+enum SubmissionState {
+ DRAFT
+ SUBMITTED
+ APPROVED
+ REJECTED
+}
+enum Status {
+ GREEN
+ YELLOW
+ RED
+ NO_DATA
+}
+enum CalculationMode {
+ DIRECT_VALUE
+ PERCENTAGE
+ RATE
+ RATIO
+ CUSTOM
+}
+enum TargetType {
+ GTE
+ LTE
+ BETWEEN
+}
+enum Frequency {
+ DAILY
+ WEEKLY
+ MONTHLY
+ QUARTERLY
+ YEARLY
+}
+enum SourceType {
+ MANUAL
+ CSV_IMPORT
+ HIS
+ SYSTEM
+}
+model OrganizationSettings {
+ id String @id @default("organization")
+ name String
+ timezone String @default("Asia/Bangkok")
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+}
+model Department {
+ id String @id @default(uuid())
+ code String @unique
+ nameTh String
+ nameEn String?
+ active Boolean @default(true)
+ sortOrder Int @default(0)
+ users User[]
+ kpis KpiDefinition[]
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+}
+model User {
+ id String @id @default(uuid())
+ email String @unique
+ username String @unique
+ passwordHash String
+ displayName String
+ departmentId String?
+ department Department? @relation(fields:[departmentId],references:[id])
+ role Role
+ isActive Boolean @default(true)
+ sessionVersion Int @default(0)
+ lastLoginAt DateTime?
+ submissions KpiSubmission[] @relation("Author")
+ reviews KpiSubmission[] @relation("Reviewer")
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@index([departmentId,role])
+}
+model KpiDefinition {
+ id String @id @default(uuid())
+ code String @unique
+ nameTh String
+ nameEn String?
+ description String @default("")
+ departmentId String
+ department Department @relation(fields:[departmentId],references:[id])
+ unit String
+ frequency Frequency @default(MONTHLY)
+ calculationMode CalculationMode @default(DIRECT_VALUE)
+ targetType TargetType @default(GTE)
+ targetValue Float @default(0)
+ targetMin Float?
+ targetMax Float?
+ warningThreshold Float?
+ warningMin Float?
+ warningMax Float?
+ decimalPlaces Int @default(2)
+ rateMultiplier Float @default(1000)
+ dataSourceType SourceType @default(MANUAL)
+ dataSourceId String?
+ dataSource DataSource? @relation(fields:[dataSourceId],references:[id])
+ active Boolean @default(true)
+ displayOrder Int @default(0)
+ owner String @default("")
+ targets KpiTarget[]
+ submissions KpiSubmission[]
+ results KpiResult[]
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@index([departmentId,active,displayOrder])
+}
+model KpiTarget {
+ id String @id @default(uuid())
+ kpiId String
+ kpi KpiDefinition @relation(fields:[kpiId],references:[id])
+ effectiveFrom DateTime
+ targetType TargetType
+ targetValue Float
+ targetMin Float?
+ targetMax Float?
+ warningThreshold Float?
+ warningMin Float?
+ warningMax Float?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@unique([kpiId,effectiveFrom])
+}
+model KpiSubmission {
+ id String @id @default(uuid())
+ kpiId String
+ kpi KpiDefinition @relation(fields:[kpiId],references:[id])
+ periodStart DateTime @db.Date
+ periodEnd DateTime @db.Date
+ numerator Float?
+ denominator Float?
+ value Float?
+ note String @default("")
+ source SourceType @default(MANUAL)
+ state SubmissionState @default(DRAFT)
+ authorId String
+ author User @relation("Author",fields:[authorId],references:[id])
+ reviewerId String?
+ reviewer User? @relation("Reviewer",fields:[reviewerId],references:[id])
+ rejectionReason String?
+ reviewedAt DateTime?
+ version Int @default(0)
+ result KpiResult?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@index([kpiId,state,periodStart])
+ @@index([authorId,state])
+}
+model KpiResult {
+ id String @id @default(uuid())
+ kpiId String
+ kpi KpiDefinition @relation(fields:[kpiId],references:[id])
+ periodStart DateTime @db.Date
+ periodEnd DateTime @db.Date
+ numerator Float?
+ denominator Float?
+ value Float?
+ status Status
+ targetSnapshot Json
+ submissionId String? @unique
+ submission KpiSubmission? @relation(fields:[submissionId],references:[id])
+ source SourceType @default(MANUAL)
+ synthetic Boolean @default(false)
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@unique([kpiId,periodStart,periodEnd])
+ @@index([periodStart,status])
+}
+model DataSource {
+ id String @id @default(uuid())
+ name String @unique
+ type String
+ enabled Boolean @default(false)
+ schedule String @default("*/5 * * * *")
+ staleAfterMinutes Int @default(60)
+ lastSyncAt DateTime?
+ kpis KpiDefinition[]
+ runs SyncRun[]
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+}
+model SyncRun {
+ id String @id @default(uuid())
+ dataSourceId String
+ dataSource DataSource @relation(fields:[dataSourceId],references:[id])
+ state String
+ message String @default("")
+ count Int @default(0)
+ startedAt DateTime @default(now())
+ finishedAt DateTime?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@index([dataSourceId,startedAt])
+}
+model Alert {
+ id String @id @default(uuid())
+ key String @unique
+ type String
+ severity String
+ departmentId String?
+ kpiId String?
+ message String
+ resolvedAt DateTime?
+ resolvedBy String?
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+ @@index([departmentId,resolvedAt])
+}
+model AuditLog {
+ id String @id @default(uuid())
+ actorUserId String?
+ actorRole String
+ departmentId String?
+ action String
+ entityType String
+ entityId String
+ before Json?
+ after Json?
+ requestId String @default(uuid())
+ createdAt DateTime @default(now())
+ @@index([departmentId,createdAt])
+ @@index([action,createdAt])
+}
+model WorkerHeartbeat {
+ id String @id @default("worker")
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+}
+model LoginAttempt {
+ key String @id
+ attempts Int @default(0)
+ windowStart DateTime @default(now())
+ createdAt DateTime @default(now())
+ updatedAt DateTime @updatedAt
+}

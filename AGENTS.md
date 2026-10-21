@@ -1,0 +1,6 @@
+# Engineering constraints
+
+Use the existing checkout. Each cloud task is isolated; do not create a worktree unless explicitly requested.
+Keep TypeScript strict. Use the shared KPI engine for every calculation and shared authorization helpers before every department-owned operation. Authenticate from the server session; never trust a client role or department ID. Keep authorization and transactions in services, not presentation code. Test department isolation and workflow concurrency for changes. All official results come from approval or a reviewed worker adapter, never browser calculations.
+Keep UI labels Thai, and identifiers/docs English. Add future locale dictionaries under packages/shared; do not translate database enum identifiers. Never add patient identifiers or telemetry. Never invent HIMPRO schema or connect with write credentials. The only external adapter is a disabled fail-closed skeleton until actual mappings are provided.
+Never log credentials, password hashes, or auth tokens. Audit records are append-only. Keep .env ignored. Do not enable demo seeding in production. Use npm ci, npm run db:generate, npm run typecheck, npm run lint, npm test, and npm run build. Run npm run test:e2e against a running local server and seeded demo database when modifying workflows. Never run smoke tests against production.

@@ -1,0 +1,62 @@
+{
+  "name": "hospital-kpi",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/run.mjs npm run dev -w @kpi/web",
+    "build": "node scripts/run.mjs npm run build -w @kpi/web",
+    "start": "node scripts/run.mjs npm run start -w @kpi/web",
+    "lint": "eslint apps packages tests",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "node scripts/run.mjs tsx tests/smoke.ts",
+    "db:generate": "node scripts/run.mjs prisma generate --schema packages/db/prisma/schema.prisma",
+    "db:migrate": "node scripts/run.mjs prisma migrate deploy --schema packages/db/prisma/schema.prisma",
+    "db:seed": "node scripts/run.mjs tsx packages/db/seed.ts",
+    "worker:dev": "node scripts/run.mjs tsx apps/worker/src/index.ts",
+    "admin:create": "node scripts/run.mjs tsx scripts/create-admin.ts",
+    "test:browser": "node scripts/run.mjs playwright test",
+    "format": "prettier --write apps packages scripts tests docs *.json *.md *.ts *.mjs",
+    "test:worker": "node scripts/run.mjs tsx tests/worker-smoke.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "6.19.3",
+    "@prisma/client": "6.19.3",
+    "argon2": "0.44.0",
+    "cron-parser": "5.10.2",
+    "csv-parse": "7.0.3",
+    "next": "16.4.2",
+    "next-auth": "4.24.15",
+    "node-cron": "4.2.1",
+    "pg": "8.16.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "recharts": "3.8.0",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2",
+    "@tailwindcss/postcss": "4.2.1",
+    "@types/node": "24.10.1",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.2",
+    "eslint-config-next": "16.4.2",
+    "prettier": "3.8.3",
+    "prisma": "6.19.3",
+    "tailwindcss": "4.2.1",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3",
+    "vitest": "4.0.18"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "overrides": {
+    "deepmerge-ts": "8.0.2"
+  }
+}

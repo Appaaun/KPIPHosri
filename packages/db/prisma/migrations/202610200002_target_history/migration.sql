@@ -1,0 +1,3 @@
+ALTER TABLE "KpiTarget" ALTER COLUMN "effectiveFrom" TYPE TIMESTAMP(3);
+CREATE TRIGGER audit_no_truncate BEFORE TRUNCATE ON "AuditLog"
+FOR EACH STATEMENT EXECUTE FUNCTION reject_audit_mutation();
