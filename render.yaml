@@ -1,0 +1,64 @@
+# Render Blueprint: web, scheduled worker, and a persistent PostgreSQL database.
+# Review the recurring price in Render before creating these paid resources.
+databases:
+  - name: kpi-phosri-db
+    region: singapore
+    plan: basic-256mb
+    databaseName: kpi
+    user: kpi
+    postgresMajorVersion: "16"
+    ipAllowList: []
+
+services:
+  - type: web
+    name: kpi-phosri-web
+    runtime: node
+    region: singapore
+    plan: starter
+    buildCommand: npm ci --include=dev && npm run db:generate && npm run build
+    preDeployCommand: npm run db:migrate && npm run db:seed
+    startCommand: APP_URL="$RENDER_EXTERNAL_URL" NEXTAUTH_URL="$RENDER_EXTERNAL_URL" npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 24.19.0
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: kpi-phosri-db
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: APP_TIMEZONE
+        value: Asia/Bangkok
+      - key: SEED_DEMO_DATA
+        value: "false"
+      - key: SEED_DEMO_USERS
+        value: "false"
+      - key: HIMPRO_ENABLED
+        value: "false"
+
+  - type: worker
+    name: kpi-phosri-worker
+    runtime: node
+    region: singapore
+    plan: starter
+    buildCommand: npm ci --include=dev && npm run db:generate
+    preDeployCommand: npm run db:migrate
+    startCommand: npm run worker:dev
+    envVars:
+      - key: NODE_VERSION
+        value: 24.19.0
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: kpi-phosri-db
+          property: connectionString
+      - key: WORKER_ENABLED
+        value: "true"
+      - key: WORKER_CRON
+        value: "*/5 * * * *"
+      - key: HIMPRO_ENABLED
+        value: "false"

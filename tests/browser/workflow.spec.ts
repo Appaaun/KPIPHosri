@@ -10,7 +10,16 @@ test('Thai login, dashboard, department and KPI detail', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'ภาพรวมโรงพยาบาล' })).toBeVisible();
   await expect(page.getByText('PHARM-MR-001', { exact: false }).first()).toBeVisible();
   await page.getByRole('link', { name: '▦ กลุ่มงาน', exact: true }).click();
-  await page.locator('.department-card').first().click();
+  await page.getByLabel('รอบข้อมูล', { exact: true }).fill('2026-09');
+  const summary = await (await page.request.get('/api/dashboard?period=2026-09')).json();
+  const departmentSummary = summary.departments[0];
+  const card = page.locator('.department-card').filter({ hasText: departmentSummary.name });
+  await expect(card).toContainText(
+    `ผ่านเป้า ${departmentSummary.green} / ${departmentSummary.total} ตัวชี้วัด`,
+  );
+  await card.click();
+  await expect(page).toHaveURL(/period=2026-09/);
+  await expect(page.getByLabel('รอบข้อมูล', { exact: true })).toHaveValue('2026-09');
   await expect(page.locator('h1')).toContainText('กลุ่มงานเภสัชกรรม');
   await page
     .getByRole('link', { name: /Medication Reconciliation/ })
@@ -38,6 +47,12 @@ test('manual form to independent approval and responsive layout', async ({ brows
   await login(review, 'pharmacy.admin');
   const departments = await (await review.request.get('/api/departments')).json();
   const dep = departments[0];
+  await review.goto('/departments/' + dep.id + '?period=2026-09');
+  await review.getByRole('link', { name: 'จัดการตัวชี้วัดหน่วยงาน' }).click();
+  await expect(review).toHaveURL(new RegExp('departmentId=' + dep.id));
+  await review.getByRole('button', { name: '＋ เพิ่มข้อมูล', exact: true }).click();
+  await expect(review.locator('select[name="departmentId"]')).toHaveValue(dep.id);
+  await review.getByRole('button', { name: 'ปิด', exact: true }).click();
   const code = 'BROWSER-' + Date.now();
   const name = 'สังเคราะห์ทดสอบแบบฟอร์ม ' + code;
   const created = await review.request.post('/api/kpis', {

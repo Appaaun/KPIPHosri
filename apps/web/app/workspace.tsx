@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import {
   ResponsiveContainer,
@@ -122,6 +122,7 @@ export default function Workspace({
   timezone: string;
   refresh: number;
 }) {
+  const params = useSearchParams();
   const path = usePathname().split('/').filter(Boolean);
   const section = path[0] ?? 'dashboard';
   const admin = section === 'admin';
@@ -144,8 +145,10 @@ export default function Workspace({
     [editing, setEditing] = useState<Row | null>(null),
     [preview, setPreview] = useState<Row[] | null>(null),
     [csv, setCsv] = useState('');
-  const [period, setPeriod] = useState(new Date().toISOString().slice(0, 7)),
-    [department, setDepartment] = useState(''),
+  const [period, setPeriod] = useState(
+      params.get('period') ?? new Date().toISOString().slice(0, 7),
+    ),
+    [department, setDepartment] = useState(params.get('departmentId') ?? ''),
     [search, setSearch] = useState(''),
     [status, setStatus] = useState(''),
     [sort, setSort] = useState('asc'),
@@ -192,6 +195,7 @@ export default function Workspace({
         setData(result);
       } else if (mode === 'departments' && !admin) {
         setRows(ds);
+        setData(await read('dashboard?' + new URLSearchParams({ period })));
       } else if (mode === 'entry' || mode === 'approvals') {
         const [s, k] = await Promise.all([read('submissions'), read('kpis')]);
         setRows(s);
@@ -227,7 +231,7 @@ export default function Workspace({
     } finally {
       if (sequence === requestSequence.current) setLoading(false);
     }
-  }, [mode, id, admin, query, search, page, userRoleFilter]);
+  }, [mode, id, admin, query, search, page, userRoleFilter, period]);
   useEffect(() => {
     load();
   }, [load]);
@@ -374,8 +378,26 @@ export default function Workspace({
               <button className="secondary" onClick={load}>
                 ↻ รีเฟรชข้อมูล
               </button>
+              {manager && mode === 'departments' && id && (
+                <a
+                  className="button"
+                  href={'/admin/kpis?' + new URLSearchParams({ departmentId: id, period })}
+                >
+                  จัดการตัวชี้วัดหน่วยงาน
+                </a>
+              )}
               {manager && admin && ['kpis', 'users', 'departments', 'sources'].includes(mode) && (
-                <button onClick={() => setEditing({})}>＋ เพิ่มข้อมูล</button>
+                <button
+                  onClick={() =>
+                    setEditing(
+                      mode === 'kpis'
+                        ? { departmentId: department || user.departmentId || '' }
+                        : {},
+                    )
+                  }
+                >
+                  ＋ เพิ่มข้อมูล
+                </button>
               )}
             </div>
           </div>
@@ -740,15 +762,45 @@ export default function Workspace({
             </>
           )}
           {mode === 'departments' && !admin && !id && (
-            <div className="cards">
-              {rows.map((d) => (
-                <a className="panel department-card" href={'/departments/' + d.id} key={d.id}>
-                  <span>▦ {d.code}</span>
-                  <h2>{d.nameTh}</h2>
-                  <p>ดูผลการดำเนินงาน →</p>
-                </a>
-              ))}
-            </div>
+            <>
+              <div className="filters">
+                <label>
+                  รอบข้อมูล
+                  <input type="month" value={period} onChange={(e) => setPeriod(e.target.value)} />
+                </label>
+                <span className="muted">แยกติดตาม KPI และผลอนุมัติของแต่ละหน่วยงาน</span>
+              </div>
+              <div className="cards">
+                {rows.map((d) => {
+                  const summary = data?.departments?.find((item: Row) => item.id === d.id);
+                  return (
+                    <a
+                      className="panel department-card"
+                      href={'/departments/' + d.id + '?' + new URLSearchParams({ period })}
+                      key={d.id}
+                    >
+                      <span>▦ {d.code}</span>
+                      <h2>{d.nameTh}</h2>
+                      <p>
+                        {!d.active
+                          ? 'หน่วยงานปิดใช้งาน'
+                          : !data
+                            ? 'กำลังโหลดผลการดำเนินงาน…'
+                            : !summary
+                              ? 'ยังไม่มีตัวชี้วัดที่เปิดใช้งาน'
+                              : `ผ่านเป้า ${summary.green} / ${summary.total} ตัวชี้วัด`}
+                      </p>
+                      {summary && (
+                        <div className="progress" aria-hidden="true">
+                          <i style={{ width: (summary.green / summary.total) * 100 + '%' }} />
+                        </div>
+                      )}
+                      <p>ดู Dashboard หน่วยงาน →</p>
+                    </a>
+                  );
+                })}
+              </div>
+            </>
           )}
           {mode === 'kpis' && !admin && !id && (
             <article className="panel">
