@@ -21,6 +21,10 @@ npm run worker:dev
 
 The environment wrapper loads the root .env without overwriting exported variables, disables Next telemetry, and activates Prisma's supported JS engine. Database and worker processes must be restarted in new tasks. The web app listens on port 3000. Production cookies require HTTPS; use development mode for local HTTP.
 
+On Windows, use PowerShell with Docker Desktop running Linux containers. Run each command separately and stop at the first error. The script wrapper runs package JavaScript CLIs through Node.js rather than Unix executable shims or Windows `.cmd` files. If an older checkout reports `Unable to start requested tool. Run npm ci first.` despite a successful install, run `git pull --ff-only origin main` and `npm ci`, then retry. Do not overwrite your existing `.env`.
+
+Confirm `docker compose up -d postgres` succeeds and `docker compose ps` shows PostgreSQL healthy before running migrations or seeding. If Docker fails, capture its complete error; the generic Docker “What's next” suggestion does not identify the cause. Create the administrator only after migrations and seeding complete successfully, then start the web app.
+
 ## First administrator
 
 Seed initializes departments/settings but **does not create a default user or password**. Set `ADMIN_EMAIL`, `ADMIN_USERNAME`, and a unique `ADMIN_PASSWORD` of at least 12 characters in your secure shell environment, then run:
